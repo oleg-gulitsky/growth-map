@@ -1,5 +1,4 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { LessonItem } from './components/lesson-item';
 import { COLORS } from './constants/colors';
 import { STRINGS } from './constants/strings';
@@ -40,6 +39,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.GRAY_50,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     paddingHorizontal: 20,
