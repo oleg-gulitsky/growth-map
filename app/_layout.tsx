@@ -4,9 +4,8 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
+import { useColorScheme } from 'react-native';
 import "react-native-reanimated";
-
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
