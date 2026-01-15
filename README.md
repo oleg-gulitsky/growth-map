@@ -37,3 +37,76 @@ https://github.com/user-attachments/assets/8a925843-4998-4c35-b542-a3ce664c73e1
 #### Ссылка
 
 🔗 [Открыть в Expo Snack](https://snack.expo.dev/@oleg_g/github.com-oleg-gulitsky-growth-map:snack-export)
+
+---
+
+## Архитектура базы данных (Supabase)
+
+### Какие таблицы нужны?
+
+#### 1. `lessons` — модули обучения
+```sql
+- id (uuid, primary key)
+- title (text)
+- order_index (integer)
+```
+
+#### 2. `user_completed_lessons` — прогресс пользователя
+```sql
+- user_id (uuid, foreign key -> auth.users)
+- lesson_id (uuid, foreign key -> lessons)
+- PRIMARY KEY (user_id, lesson_id)
+```
+
+#### 3. `lesson_requirements` — зависимости между модулями
+```sql
+- lesson_id (uuid, foreign key -> lessons)
+- required_lesson_id (uuid, foreign key -> lessons)
+```
+
+### Как связать пользователя и статус урока?
+
+Статус вычисляется динамически через таблицу `user_completed_lessons`:
+
+- **done** — есть запись `(user_id, lesson_id)` в таблице
+- **active** — нет записи, но все зависимости из `lesson_requirements` пройдены
+- **locked** — не все зависимости выполнены
+
+Статус не хранится в БД, а вычисляется при каждом запросе.
+
+### Как эффективно отдавать на фронтенд список?
+
+Один SQL-запрос возвращает все модули со статусами:
+
+```sql
+SELECT 
+  l.id,
+  l.title,
+  l.order_index,
+  CASE 
+    WHEN ucl.lesson_id IS NOT NULL THEN 'done'
+    WHEN NOT EXISTS (
+      SELECT 1 FROM lesson_requirements lr
+      WHERE lr.lesson_id = l.id
+      AND lr.required_lesson_id NOT IN (
+        SELECT lesson_id FROM user_completed_lessons 
+        WHERE user_id = auth.uid()
+      )
+    ) THEN 'active'
+    ELSE 'locked'
+  END as status
+FROM lessons l
+LEFT JOIN user_completed_lessons ucl 
+  ON l.id = ucl.lesson_id AND ucl.user_id = auth.uid()
+ORDER BY l.order_index;
+```
+
+**Результат для фронтенда:**
+```json
+[
+  { "id": 1, "title": "Intro", "status": "done" },
+  { "id": 2, "title": "Basics", "status": "done" },
+  { "id": 3, "title": "Advanced", "status": "active" },
+  { "id": 4, "title": "Expert", "status": "locked" }
+]
+```
